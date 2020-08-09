@@ -1,32 +1,6 @@
 <template>
   <div>
-    <div class="page-header">
-      <div class="logo">
-        <img
-          style="width:120px;"
-          src="https://vuejs.org/images/logo.png"
-          alt=""
-        />
-      </div>
-      <h1 class="project-name">vue-run-sfc</h1>
-      <h2 class="project-tagline">文档利器, 在线运行 & 编辑 Vue 单文件</h2>
-      <div>
-        <a
-          href="https://github.com/dream2023/vue-run-sfc"
-          target="_blank"
-          class="btn"
-          >View on GitHub</a
-        >
-        <a
-          href="https://www.npmjs.com/package/vue-run-sfc"
-          target="_blank"
-          class="btn"
-          >View on NPM</a
-        >
-      </div>
-    </div>
     <section class="main-content">
-      <h2>DEMO</h2>
       <vue-run-sfc
         :js-labs="jsLabs"
         :css-labs="cssLabs"

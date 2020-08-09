@@ -52,54 +52,7 @@ export default {
     }
   },
   mounted () {
-    const iframe = this.$refs.iframe
-    const iframeDocument = iframe.contentWindow.document
-    const stylesTags = this.cssLabs.map(
-      style => `<link rel="stylesheet" href="${style}" />`
-    )
-    const scriptTags = this.jsLabs.map(
-      script => `<script src="${script}"><\/script>`
-    )
-    const js = Array.isArray(this.js) ? this.js : [this.js]
-    const css = Array.isArray(this.css) ? this.css : [this.css]
-    const html = `
-<!DOCTYPE html>
-  <html>
-    <head>
-      ${stylesTags.join('\n')}
-      <style>${css.join('\n')}</style>
-
-      <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
-      ${scriptTags.join('\n')}
-      <script>${js.join('\n')}<\/script>
-      <script>
-        // 错误处理
-        var errorHandler = function(error) {
-          var el = document.getElementById('error')
-          el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
-        }
-        Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
-        Vue.config.errorHandler = errorHandler
-        Vue.config.productionTip = false
-        Vue.config.devtools = false
-      <\/script>
-    </head>
-    <body id="body">
-      <div><pre id="error" style="color: red"></pre></div>
-      <div id="box"></div>
-    </body>
-</html>`
-    iframeDocument.open()
-    iframeDocument.write(html)
-    iframeDocument.close()
-    iframe.onload = () => {
-      this.setHTML()
-      this.loading = false
-    }
-
-    iframe.error = () => {
-      this.loading = false
-    }
+    this.initdoc()
   },
   data () {
     return {
@@ -132,6 +85,65 @@ export default {
       }
       this.debounceChangeHeight()
     },
+    initdoc () {
+      const iframe = this.$refs.iframe
+      const iframeDocument = iframe.contentWindow.document
+      const stylesTags = this.cssLabs.map(
+        style => `<link rel="stylesheet" href="${style}" />`
+      )
+      const scriptTags = this.jsLabs.map(
+        script => `<script src="${script}"><\/script>`
+      )
+      const js = Array.isArray(this.js) ? this.js : [this.js]
+      const css = Array.isArray(this.css) ? this.css : [this.css]
+      var html = ''
+      console.log('this.value', this.value)
+      if (this.value.iscommon) {
+        html = `
+        ${this.value.template}`
+      } else {
+        html = `
+        <!DOCTYPE html>
+          <html>
+            <head>
+              ${stylesTags.join('\n')}
+              <style>${css.join('\n')}</style>
+
+              <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
+              ${scriptTags.join('\n')}
+              <script>${js.join('\n')}<\/script>
+              <script>
+                // 错误处理
+                var errorHandler = function(error) {
+                  var el = document.getElementById('error')
+                  el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
+                }
+                Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
+                Vue.config.errorHandler = errorHandler
+                Vue.config.productionTip = false
+                Vue.config.devtools = false
+              <\/script>
+            </head>
+            <body id="body">
+              <div><pre id="error" style="color: red"></pre></div>
+              <div id="box"></div>
+            </body>
+        </html>`
+      }
+
+      iframeDocument.open()
+      iframeDocument.write(html)
+      iframeDocument.close()
+      iframe.onload = () => {
+        // this.setHTML()
+        console.log('iframe onload:')
+        this.loading = false
+      }
+
+      iframe.error = () => {
+        this.loading = false
+      }
+    },
     getScript (script, template) {
       return ` try {
           var exports = {};
@@ -148,63 +160,84 @@ export default {
     },
     // 设置html
     setHTML () {
-      let { styles = [], script = '', template, errors } = this.value
+      this.initdoc()
+      let { styles = [], script = '', template, errors, iscommon } = this.value
       const iframe = this.$refs.iframe
       const iframeDocument = iframe.contentWindow.document
-
-      if (iframeDocument) {
-        const elError = iframeDocument.getElementById('error')
-        if (elError) {
-          if (errors) {
-            elError.style.display = 'block'
-            elError.innerText = `${errors.join('\n')}`
-          } else {
-            elError.style.display = 'none'
-          }
+      console.log(iscommon, template)
+      if (iscommon) {
+        iframeDocument.write(template)
+        iframeDocument.close()
+        this.iframe = iframe
+        this.iframeDocument = iframeDocument
+        if (!this.height) {
+          this.$nextTick(() => {
+            this.changeHeight()
+            iframe.contentWindow.addEventListener(
+              'resize',
+              this.changeHeight,
+              false
+            )
+          })
         }
 
-        const elBox = iframeDocument.getElementById('box')
-        if (elBox) {
-          const fragment = iframeDocument.createDocumentFragment()
-          // 创建样式
-          const newStyle = iframeDocument.createElement('style')
-          newStyle.type = 'text/css'
-          newStyle.innerHTML = styles.join('\n')
-
-          // 创建元素
-          const elApp = iframeDocument.createElement('div')
-          elApp.setAttribute('id', 'app')
-          script = this.getScript(script, template)
-
-          // 创建js
-          const newScript = iframeDocument.createElement('script')
-          newScript.type = 'text/javascript'
-          newScript.innerHTML = script
-
-          // 重置 html
-          elBox.innerHTML = ''
-
-          // 填充元素
-          fragment.appendChild(newStyle)
-          fragment.appendChild(elApp)
-          fragment.appendChild(newScript)
-
-          elBox.appendChild(fragment)
-
-          this.iframe = iframe
-          this.iframeDocument = iframeDocument
-
-          if (!this.height) {
-            this.$nextTick(() => {
-              this.changeHeight()
-              iframe.contentWindow.addEventListener(
-                'resize',
-                this.changeHeight,
-                false
-              )
-            })
+        return
+      }
+      if (iscommon === 0 && iframeDocument) {
+        setTimeout(() => {
+          const elError = iframeDocument.getElementById('error')
+          if (elError) {
+            if (errors) {
+              elError.style.display = 'block'
+              elError.innerText = `${errors.join('\n')}`
+            } else {
+              elError.style.display = 'none'
+            }
           }
-        }
+          const elBox = iframeDocument.getElementById('box')
+          console.log(122222333, elBox)
+          if (elBox) {
+            const fragment = iframeDocument.createDocumentFragment()
+            // 创建样式
+            const newStyle = iframeDocument.createElement('style')
+            newStyle.type = 'text/css'
+            newStyle.innerHTML = styles.join('\n')
+
+            // 创建元素
+            const elApp = iframeDocument.createElement('div')
+            elApp.setAttribute('id', 'app')
+            script = this.getScript(script, template)
+
+            // 创建js
+            const newScript = iframeDocument.createElement('script')
+            newScript.type = 'text/javascript'
+            newScript.innerHTML = script
+
+            // 重置 html
+            elBox.innerHTML = ''
+
+            // 填充元素
+            fragment.appendChild(newStyle)
+            fragment.appendChild(elApp)
+            fragment.appendChild(newScript)
+
+            elBox.appendChild(fragment)
+
+            this.iframe = iframe
+            this.iframeDocument = iframeDocument
+
+            // if (!this.height) {
+            //   this.$nextTick(() => {
+            //     this.changeHeight()
+            //     iframe.contentWindow.addEventListener(
+            //       'resize',
+            //       this.changeHeight,
+            //       false
+            //     )
+            //   })
+            // }
+          }
+        }, 400)
       }
     }
   },

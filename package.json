@@ -11,7 +11,7 @@
     "release": "standard-version",
     "pub": "npm run build:lib && npm run release &&  npm publish --registry http://registry.npmjs.org && git push --follow-tags origin master && gren release --override",
     "build:docs": "vue-cli-service build",
-    "lint": "vue-cli-service lint --mode production"
+    "lint": "vue-cli-service lint --fix --mode production"
   },
   "repository": {
     "type": "git",

@@ -18,14 +18,6 @@
       <span class="control-text" v-show="hovering">{{ controlText }}</span>
     </transition>
 
-    <transition name="text-slide">
-      <span class="power-by-text"
-        >Power By
-        <a href="https://github.com/dream2023/vue-run-sfc" target="_blank"
-          >Vue-Run-Sfc</a
-        ></span
-      >
-    </transition>
   </div>
 </template>
 

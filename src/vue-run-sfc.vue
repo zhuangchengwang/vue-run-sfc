@@ -141,7 +141,7 @@ export default {
      */
     row: {
       type: Boolean,
-      default: undefined
+      default: true
     },
 
     /**
@@ -173,7 +173,7 @@ export default {
      */
     open: {
       type: Boolean,
-      default: undefined
+      default: true
     },
 
     /**
@@ -189,7 +189,7 @@ export default {
       // 当hover时
       hovering: false,
       // 是否展开编辑器
-      isExpanded: false,
+      isExpanded: true,
       // 编辑器配置
       codemirrorOption: codemirrorOption,
       // 当时是否为全屏
@@ -199,11 +199,14 @@ export default {
       // 最初的代码(用于重置)
       initalCode: '',
       // 预览数据
-      preview: {},
+      preview: {
+        iscommon: 1,
+        template: ''
+      },
       // 预览区高度
       previewHeight: 0,
       // 布局
-      isRow: null
+      isRow: true
     }
   },
   computed: {
@@ -289,6 +292,16 @@ export default {
         })
       }
     },
+    getSource (source, type) {
+      const regex = new RegExp(`<${type}[^>]*>`)
+      let openingTag = source.match(regex)
+      if (!openingTag) return ''
+      else openingTag = openingTag[0]
+      return source.slice(
+        source.indexOf(openingTag) + openingTag.length,
+        source.lastIndexOf(`</${type}>`)
+      )
+    },
     // 运行代码
     // 参考: https://github.com/QingWei-Li/vuep.run/blob/master/src/components/preview.vue
     handleRun () {
@@ -300,7 +313,18 @@ export default {
           if (!code) {
             return
           }
-
+          let str = this.getSource(code, 'script')
+          const regex = new RegExp(/export\s+default\s+{/)
+          let res = str.match(regex)
+          if (!res) {
+            // 普通文档
+            console.log(1212)
+            this.preview = {
+              iscommon: 1,
+              template: code
+            }
+            return
+          }
           let { template, script, styles, errors } = compiler.parseComponent(
             code
           )
@@ -308,7 +332,8 @@ export default {
           // 判断是否有错误
           if (errors && errors.length) {
             this.preview = {
-              errors: errors
+              errors: errors,
+              iscommon: 0
             }
           } else {
             // 如果 html和js 都不存在
@@ -349,11 +374,13 @@ export default {
                 styles: styles,
                 script: script,
                 template: template,
-                errors: errors
+                errors: errors,
+                iscommon: 0
               }
             } catch (error) {
               this.preview = {
-                errors: [error.stack]
+                errors: [error.stack],
+                iscommon: 0
               }
             }
           }
