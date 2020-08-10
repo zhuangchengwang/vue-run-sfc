@@ -11,7 +11,7 @@
       scrolling="yes"
       ref="iframe"
       frameborder="0"
-      style="width: 100%;height: 150px;border: none;"
+      style="width: 100%;height: 100%;border: none;"
     ></iframe>
   </div>
 </template>
@@ -52,7 +52,8 @@ export default {
     }
   },
   mounted () {
-    this.initdoc()
+    // this.initdoc()
+    this.setHTML()
   },
   data () {
     return {
@@ -75,8 +76,9 @@ export default {
           const iframeDocument = this.iframeDocument
           iframe.style.display = 'block'
           const extendHeight = 10 // 额外的高度(避免出现滚动条)
+          console.log(iframeDocument.documentElement)
           const height =
-            iframeDocument.documentElement.offsetHeight + extendHeight
+            iframeDocument.documentElement.clientHeight + extendHeight
           iframe.style.height = height + 'px'
           if (this.$refs.preview) {
             this.$emit('change-height', this.$refs.preview.clientHeight)
@@ -85,64 +87,59 @@ export default {
       }
       this.debounceChangeHeight()
     },
-    initdoc () {
-      const iframe = this.$refs.iframe
-      const iframeDocument = iframe.contentWindow.document
-      const stylesTags = this.cssLabs.map(
-        style => `<link rel="stylesheet" href="${style}" />`
-      )
-      const scriptTags = this.jsLabs.map(
-        script => `<script src="${script}"><\/script>`
-      )
-      const js = Array.isArray(this.js) ? this.js : [this.js]
-      const css = Array.isArray(this.css) ? this.css : [this.css]
+    createHtmltmp () {
       var html = ''
       console.log('this.value', this.value)
-      if (this.value.iscommon) {
+      let { styles = [], script = '', template, errors, iscommon } = this.value
+      if (this.value.iscommon === 1) {
         html = `
-        ${this.value.template}`
-      } else {
+         ${template}`
+      } else if (this.value.iscommon === 0) {
+        var stylesTags = this.cssLabs.map(
+          style => `<link rel="stylesheet" href="${style}" />`
+        )
+        var scriptTags = this.jsLabs.map(
+          script => `<script src="${script}"><\/script>`
+        )
+        var js = Array.isArray(this.js) ? this.js : [this.js]
+        var css = Array.isArray(this.css) ? this.css : [this.css]
+        var script2 = this.getScript(script, template)
         html = `
-        <!DOCTYPE html>
-          <html>
-            <head>
-              ${stylesTags.join('\n')}
-              <style>${css.join('\n')}</style>
+         <!DOCTYPE html>
+           <html>
+             <head>
+               ${stylesTags.join('\n')}
+               <style>${css.join('\n')}</style>
 
-              <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
-              ${scriptTags.join('\n')}
-              <script>${js.join('\n')}<\/script>
-              <script>
-                // 错误处理
-                var errorHandler = function(error) {
-                  var el = document.getElementById('error')
-                  el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
-                }
-                Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
-                Vue.config.errorHandler = errorHandler
-                Vue.config.productionTip = false
-                Vue.config.devtools = false
-              <\/script>
-            </head>
-            <body id="body">
-              <div><pre id="error" style="color: red"></pre></div>
-              <div id="box"></div>
-            </body>
-        </html>`
+               <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
+               ${scriptTags.join('\n')}
+               <script>${js.join('\n')}<\/script>
+               <script>
+                 // 错误处理
+                 var errorHandler = function(error) {
+                   var el = document.getElementById('error')
+                   el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
+                 }
+                 Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
+                 Vue.config.errorHandler = errorHandler
+                 Vue.config.productionTip = false
+                 Vue.config.devtools = false
+               <\/script>
+             </head>
+             <body id="body">
+               <div><pre id="error" style="color: red"></pre></div>
+               <div id="box">
+                  <style>${styles.join('\n')}</style>
+                  <div id="app">
+                  </div>
+                  <script>
+                  ${script2}
+                  <\/script>
+               </div>
+             </body>
+         </html>`
       }
-
-      iframeDocument.open()
-      iframeDocument.write(html)
-      iframeDocument.close()
-      iframe.onload = () => {
-        // this.setHTML()
-        console.log('iframe onload:')
-        this.loading = false
-      }
-
-      iframe.error = () => {
-        this.loading = false
-      }
+      return html
     },
     getScript (script, template) {
       return ` try {
@@ -160,84 +157,32 @@ export default {
     },
     // 设置html
     setHTML () {
-      this.initdoc()
-      let { styles = [], script = '', template, errors, iscommon } = this.value
+      console.log('setHTML iframe :')
       const iframe = this.$refs.iframe
       const iframeDocument = iframe.contentWindow.document
-      console.log(iscommon, template)
-      if (iscommon) {
-        iframeDocument.write(template)
-        iframeDocument.close()
-        this.iframe = iframe
-        this.iframeDocument = iframeDocument
-        if (!this.height) {
-          this.$nextTick(() => {
-            this.changeHeight()
-            iframe.contentWindow.addEventListener(
-              'resize',
-              this.changeHeight,
-              false
-            )
-          })
-        }
+      var html = this.createHtmltmp()
+      window.gethtml = `${html}`
+      iframe.src = 'javascript:parent.gethtml;'
 
-        return
+      iframe.onload = () => {
+        console.log('iframe onload:', iframeDocument.body.offsetHeight)
+        this.loading = false
+        // this.iframe = iframe
+        // this.iframeDocument = iframeDocument
+        // if (!this.height) {
+        //   this.$nextTick(() => {
+        //     this.changeHeight()
+        //     iframe.contentWindow.addEventListener(
+        //       'resize',
+        //       this.changeHeight,
+        //       false
+        //     )
+        //   })
+        // }
       }
-      if (iscommon === 0 && iframeDocument) {
-        setTimeout(() => {
-          const elError = iframeDocument.getElementById('error')
-          if (elError) {
-            if (errors) {
-              elError.style.display = 'block'
-              elError.innerText = `${errors.join('\n')}`
-            } else {
-              elError.style.display = 'none'
-            }
-          }
-          const elBox = iframeDocument.getElementById('box')
-          console.log(122222333, elBox)
-          if (elBox) {
-            const fragment = iframeDocument.createDocumentFragment()
-            // 创建样式
-            const newStyle = iframeDocument.createElement('style')
-            newStyle.type = 'text/css'
-            newStyle.innerHTML = styles.join('\n')
 
-            // 创建元素
-            const elApp = iframeDocument.createElement('div')
-            elApp.setAttribute('id', 'app')
-            script = this.getScript(script, template)
-
-            // 创建js
-            const newScript = iframeDocument.createElement('script')
-            newScript.type = 'text/javascript'
-            newScript.innerHTML = script
-
-            // 重置 html
-            elBox.innerHTML = ''
-
-            // 填充元素
-            fragment.appendChild(newStyle)
-            fragment.appendChild(elApp)
-            fragment.appendChild(newScript)
-
-            elBox.appendChild(fragment)
-
-            this.iframe = iframe
-            this.iframeDocument = iframeDocument
-
-            // if (!this.height) {
-            //   this.$nextTick(() => {
-            //     this.changeHeight()
-            //     iframe.contentWindow.addEventListener(
-            //       'resize',
-            //       this.changeHeight,
-            //       false
-            //     )
-            //   })
-            // }
-          }
-        }, 400)
+      iframe.error = () => {
+        this.loading = false
       }
     }
   },
@@ -258,5 +203,6 @@ export default {
 .vue-run-sfc-preview {
   background: white;
   padding: 20px 15px;
+  height: 100%;
 }
 </style>

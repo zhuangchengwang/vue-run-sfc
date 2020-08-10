@@ -182,7 +182,15 @@ export default {
     isHideHeader: {
       type: Boolean,
       default: undefined
+    },
+    /**
+     *
+     */
+    preview_height: {
+      type: String,
+      default: 650
     }
+
   },
   data () {
     return {
@@ -204,7 +212,7 @@ export default {
         template: ''
       },
       // 预览区高度
-      previewHeight: 0,
+      previewHeight: this.preview_height,
       // 布局
       isRow: true
     }
@@ -251,7 +259,7 @@ export default {
       } else {
         if (!this.attrs.height) {
           let editorHeight = 0
-          const minHeight = 150 // 最小高度
+          const minHeight = 350 // 最小高度
 
           if (this.isRow) {
             // 如果是并排, 则根据预览区的高度 或者 最小高度
