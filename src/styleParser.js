@@ -1,5 +1,5 @@
 const axios = window.axios
-axios.interceptors.response.use(function (response) {
+const myInterceptor = axios.interceptors.response.use(function (response) {
   const data = response.data
   if (data.success) {
     if (data.payload.css.errors && data.payload.css.errors.length) {
@@ -60,4 +60,8 @@ export const getStyles = (styles) => {
   })
 
   return axios.all(styles)
+}
+
+export const removeUnterceptor=()=>{
+  axios.interceptors.request.eject(myInterceptor)
 }

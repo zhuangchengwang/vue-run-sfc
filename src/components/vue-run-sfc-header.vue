@@ -8,6 +8,9 @@
     <div class="vue-run-sfc-header-title">{{ title }}</div>
     <!-- 操作区 -->
     <div class="vue-run-sfc-header-action" v-if="isExpanded">
+      <button class="vue-run-sfc-header-button" @click="alert('代码改变后(如增加一个空格),就会自动运行')">
+        运行
+      </button>
       <button class="vue-run-sfc-header-button" @click="$emit('reset')">
         重置
       </button>
@@ -41,6 +44,11 @@ export default {
     return {
       // 当前浏览器是否支持全屏
       canScreenfull: screenfull.isEnabled
+    }
+  },
+  methods:{
+    alert(msg){
+      alert(msg)
     }
   }
 }

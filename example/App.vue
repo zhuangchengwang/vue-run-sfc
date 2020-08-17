@@ -7,13 +7,15 @@
         title="测试DEMO"
         :open="true"
         :code="code"
+        codelanguage="html"
+        codecompileurl="http://wiki.xi13n.cn/runcode/run"
       />
-      <h2>DEMO 源码</h2>
+      <!-- <h2>DEMO 源码</h2>
       <codemirror
         style="border-top: 1px solid #eee"
         :options="codemirrorOption"
         v-model="exampleCode"
-      />
+      /> -->
     </section>
   </div>
 </template>

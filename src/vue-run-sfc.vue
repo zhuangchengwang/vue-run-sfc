@@ -48,6 +48,7 @@
                 ? '1px solid var(--vue-run-sfc-border, #ebeef5)'
                 : ''
           }"
+          :codecompileurl="codecompileurl"
           :css-labs="attrs.cssLabs"
           @change-height="handlePreviewHeightChange"
           :value="preview"
@@ -77,7 +78,7 @@ import cssVars from 'css-vars-ponyfill'
 const { debounce } = require('throttle-debounce')
 const compiler = require('vue-template-compiler')
 const screenfull = require('screenfull')
-const Babel = require('@babel/standalone')
+// const Babel = require('@babel/standalone')
 
 export default {
   name: 'vue-run-sfc',
@@ -143,7 +144,14 @@ export default {
       type: Boolean,
       default: true
     },
-
+	codelanguage: {
+      type: String,
+      default: 'html'
+    },
+    codecompileurl: {
+        type: String,
+        default: '#'
+    },
     /**
      * 当 `row` 为 true 时, 编辑区和展示区上下位置
      * 当为 false 时, 编辑器在下, 展示区在上
@@ -187,19 +195,22 @@ export default {
      *
      */
     preview_height: {
-      type: String,
+      type: Number,
       default: 650
     }
 
   },
   data () {
+    // https://codemirror.net/mode/
+    let cdop = codemirrorOption;
+    // cdop.mode = "text/x-php";
     return {
       // 当hover时
       hovering: false,
       // 是否展开编辑器
       isExpanded: true,
       // 编辑器配置
-      codemirrorOption: codemirrorOption,
+      codemirrorOption: cdop,
       // 当时是否为全屏
       isScreenfull: false,
       // 实际代码
@@ -209,6 +220,7 @@ export default {
       // 预览数据
       preview: {
         iscommon: 1,
+        language: this.codelanguage,
         template: ''
       },
       // 预览区高度
@@ -321,15 +333,30 @@ export default {
           if (!code) {
             return
           }
+          let htmls = ['html','css','javascript','vue'];
+          if(htmls.indexOf(this.codelanguage)<0){
+            this.preview = {
+              template: code,
+              iscommon: 1,
+              language: this.codelanguage
+            }
+            return;
+          }
+          //前端
           let str = this.getSource(code, 'script')
-          const regex = new RegExp(/export\s+default\s+{/)
+          // 含有关键字export default
+          let regex = new RegExp(/export\s+default\s+{/)
           let res = str.match(regex)
-          if (!res) {
+          // 含有关键字export default
+          let regex2 = new RegExp(`<template[^>]*>`)
+          let res2 = code.match(regex2)
+          if (!res || !res2) {
             // 普通文档
             console.log(1212)
             this.preview = {
+              template: code,
               iscommon: 1,
-              template: code
+              language: this.codelanguage
             }
             return
           }
@@ -339,9 +366,11 @@ export default {
 
           // 判断是否有错误
           if (errors && errors.length) {
+
             this.preview = {
               errors: errors,
-              iscommon: 0
+              iscommon: 0,
+              language: this.codelanguage
             }
           } else {
             // 如果 html和js 都不存在
@@ -374,21 +403,29 @@ export default {
 
             // 转码
             try {
-              script = Babel.transform(script, {
-                presets: ['es2015']
-              }).code
+               let regex = new RegExp(/export\s+default\s+/)
+              script = this.getSource(this.code, "script").replace(
+                      regex,
+                      "var _default = "
+                    );
+
+              // script = Babel.transform(script, {
+              //   presets: ['es2015']
+              // }).code
 
               this.preview = {
                 styles: styles,
                 script: script,
                 template: template,
                 errors: errors,
-                iscommon: 0
+                iscommon: 0,
+                language: this.codelanguage
               }
             } catch (error) {
               this.preview = {
                 errors: [error.stack],
-                iscommon: 0
+                iscommon: 0,
+                language: this.codelanguage
               }
             }
           }

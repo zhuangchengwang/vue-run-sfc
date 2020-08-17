@@ -46,6 +46,10 @@ export default {
       type: Object,
       required: true
     },
+    codecompileurl: {
+        type: String,
+        default: '#'
+    },
     themeColor: {
       type: String,
       default: '#409eff'
@@ -53,6 +57,7 @@ export default {
   },
   mounted () {
     // this.initdoc()
+    console.log("mounted:")
     this.setHTML()
   },
   data () {
@@ -64,6 +69,7 @@ export default {
   },
   watch: {
     value () {
+      console.log("value change:")
       this.setHTML()
     }
   },
@@ -88,63 +94,105 @@ export default {
       this.debounceChangeHeight()
     },
     createHtmltmp () {
-      var html = ''
-      console.log('this.value', this.value)
-      let { styles = [], script = '', template, errors, iscommon } = this.value
-      if (this.value.iscommon === 1) {
-        html = `
-         ${template}`
-      } else if (this.value.iscommon === 0) {
-        var stylesTags = this.cssLabs.map(
-          style => `<link rel="stylesheet" href="${style}" />`
-        )
-        var scriptTags = this.jsLabs.map(
-          script => `<script src="${script}"><\/script>`
-        )
-        var js = Array.isArray(this.js) ? this.js : [this.js]
-        var css = Array.isArray(this.css) ? this.css : [this.css]
-        var script2 = this.getScript(script, template)
-        html = `
-         <!DOCTYPE html>
-           <html>
-             <head>
-               ${stylesTags.join('\n')}
-               <style>${css.join('\n')}</style>
+      return new Promise((resolve,reject)=>{
+        let htmls = ['html','css','javascript','vue'];
+        if(htmls.indexOf(this.value.language)>-1){
+          var html = ''
+          console.log('this.value', this.value)
+          let { styles = [], script = '', template, errors, iscommon,language } = this.value
+          if (this.value.iscommon === 1) {
+            html = `
+             ${template}`
+          } else if (this.value.iscommon === 0) {
+            var stylesTags = this.cssLabs.map(
+              style => `<link rel="stylesheet" href="${style}" />`
+            )
+            var scriptTags = this.jsLabs.map(
+              script => `<script src="${script}"><\/script>`
+            )
+            var js = Array.isArray(this.js) ? this.js : [this.js]
+            var css = Array.isArray(this.css) ? this.css : [this.css]
+            var script2 = this.getScript(script, template)
+            html = `
+             <!DOCTYPE html>
+               <html>
+                 <head>
+                   ${stylesTags.join('\n')}
+                   <style>${css.join('\n')}</style>
 
-               <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
-               ${scriptTags.join('\n')}
-               <script>${js.join('\n')}<\/script>
-               <script>
-                 // 错误处理
-                 var errorHandler = function(error) {
-                   var el = document.getElementById('error')
-                   el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
-                 }
-                 Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
-                 Vue.config.errorHandler = errorHandler
-                 Vue.config.productionTip = false
-                 Vue.config.devtools = false
-               <\/script>
-             </head>
-             <body id="body">
-               <div><pre id="error" style="color: red"></pre></div>
-               <div id="box">
-                  <style>${styles.join('\n')}</style>
-                  <div id="app">
-                  </div>
-                  <script>
-                  ${script2}
-                  <\/script>
-               </div>
-             </body>
-         </html>`
-      }
-      return html
+                   <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
+                   ${scriptTags.join('\n')}
+                   <script>${js.join('\n')}<\/script>
+                   <script>
+                     // 错误处理
+                     var errorHandler = function(error) {
+                       var el = document.getElementById('error')
+                       el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
+                     }
+                     Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
+                     Vue.config.errorHandler = errorHandler
+                     Vue.config.productionTip = false
+                     Vue.config.devtools = false
+                   <\/script>
+                 </head>
+                 <body id="body">
+                   <div><pre id="error" style="color: red"></pre></div>
+                   <div id="box">
+                      <style>${styles.join('\n')}</style>
+                      <div id="app">
+                      </div>
+                      <script>
+                      ${script2}
+                      <\/script>
+                   </div>
+                 </body>
+             </html>`
+          }
+          resolve(html)
+        }else{
+          //ajax 请求
+          // console.log(this.value);
+          if(!this.value.template){
+           resolve("代码改变,就可以在此实时预览效果~~~")
+           return;
+          }
+
+          let url = this.codecompileurl;
+          let axios = window.axios.create({
+          timeout: 5000, // request timeout  设置请求超时时间
+          responseType: "json",
+          // withCredentials: true, // 是否允许带cookie这些
+          headers: {
+            "Content-Type": "application/json;charset=utf-8"
+          }
+      });
+          let data = new FormData();
+          data.append('code',this.value.template);
+          data.append('language',this.value.language);
+
+          axios.post(this.codecompileurl,data)
+                .then((response) => {
+                  console.log(response)
+                   resolve('<pre>'+response.data.data+'</pre>')
+                })
+                .catch(function (error) { // 请求失败处理
+                  console.log(error);
+                });
+
+        }
+      })
+
     },
     getScript (script, template) {
       return ` try {
           var exports = {};
+          "use strict";
+          Object.defineProperty(exports, "__esModule", {
+            value: true
+          });
+          exports.default = void 0;
           ${script}
+          exports.default = _default;
           var component = exports.default;
           // 如果定义了 template函数, 则无需 template
           component.template = component.template || ${template}
@@ -157,33 +205,37 @@ export default {
     },
     // 设置html
     setHTML () {
-      console.log('setHTML iframe :')
+      console.log('setHTML')
       const iframe = this.$refs.iframe
       const iframeDocument = iframe.contentWindow.document
-      var html = this.createHtmltmp()
-      window.gethtml = `${html}`
-      iframe.src = 'javascript:parent.gethtml;'
+      let pro = this.createHtmltmp()
+      pro.then((html)=>{
+        console.log('setHTML iframe pro then:')
+        window.gethtml = `${html}`
+        iframe.src = 'javascript:parent.gethtml;'
 
-      iframe.onload = () => {
-        console.log('iframe onload:', iframeDocument.body.offsetHeight)
-        this.loading = false
-        // this.iframe = iframe
-        // this.iframeDocument = iframeDocument
-        // if (!this.height) {
-        //   this.$nextTick(() => {
-        //     this.changeHeight()
-        //     iframe.contentWindow.addEventListener(
-        //       'resize',
-        //       this.changeHeight,
-        //       false
-        //     )
-        //   })
-        // }
-      }
+        iframe.onload = () => {
+          console.log('iframe onload:', iframeDocument.body.offsetHeight)
+          this.loading = false
+          // this.iframe = iframe
+          // this.iframeDocument = iframeDocument
+          // if (!this.height) {
+          //   this.$nextTick(() => {
+          //     this.changeHeight()
+          //     iframe.contentWindow.addEventListener(
+          //       'resize',
+          //       this.changeHeight,
+          //       false
+          //     )
+          //   })
+          // }
+        }
 
-      iframe.error = () => {
-        this.loading = false
-      }
+        iframe.error = () => {
+          this.loading = false
+        }
+      })
+
     }
   },
   beforeDestory () {
