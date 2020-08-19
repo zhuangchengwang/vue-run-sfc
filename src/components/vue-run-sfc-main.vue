@@ -9,11 +9,11 @@
     class="vue-run-sfc-main"
   >
     <template v-if="isRow && isExpanded">
-      <div class="vue-run-sfc-main-pane" style="overflow-y: auto;width: 50%;">
+      <div class="vue-run-sfc-main-pane" style="width: 50%;">
         <slot name="editor"></slot>
       </div>
       <multipane-resizer></multipane-resizer>
-      <div class="vue-run-sfc-main-pane" style="overflow-y: auto;flexGrow: 1">
+      <div class="vue-run-sfc-main-pane" style="flexGrow: 1">
         <slot name="preview"></slot>
       </div>
     </template>

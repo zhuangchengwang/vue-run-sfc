@@ -13,6 +13,7 @@
       v-if="!attrs.isHideHeader"
       :is-screenfull="isScreenfull"
       :is-expanded="isExpanded"
+      @runcode="handleRun"
       @reset="handleReset"
       @change-row="isRow = !isRow"
       @screenfull="handleScreenfull"
@@ -26,13 +27,24 @@
     >
       <template v-slot:editor>
         <!-- 编辑器区域 -->
-        <codemirror
-          class="vue-run-sfc-editor"
-          v-model="editCode"
-          @input="handleRun"
-          :style="{ height: editorHeight }"
-          :options="codemirrorOption"
-        ></codemirror>
+
+        <MonacoEditor
+
+            width="100%"
+            height="400"
+            language="html"
+            :style="{ height: editorHeight }"
+            :code="editCode"
+
+            :editorOptions="codemirrorOption"
+
+            @mounted="onMounted"
+
+            @codeChange="onCodeChange"
+
+            >
+
+        </MonacoEditor>
       </template>
       <template v-slot:preview>
         <!-- 运行结果展示 -->
@@ -52,6 +64,7 @@
           :css-labs="attrs.cssLabs"
           @change-height="handlePreviewHeightChange"
           :value="preview"
+          :token="token"
         />
       </template>
     </vue-run-sfc-main>
@@ -68,13 +81,13 @@
 </template>
 
 <script>
-import { codemirror, codemirrorOption } from './codemirror'
+
 import VueRunSfcPreview from './components/vue-run-sfc-preview'
 import VueRunSfcHeader from './components/vue-run-sfc-header'
 import VueRunSfcControl from './components/vue-run-sfc-control'
 import VueRunSfcMain from './components/vue-run-sfc-main'
 import cssVars from 'css-vars-ponyfill'
-
+import MonacoEditor from 'vue-monaco-editor'
 const { debounce } = require('throttle-debounce')
 const compiler = require('vue-template-compiler')
 const screenfull = require('screenfull')
@@ -87,7 +100,7 @@ export default {
     VueRunSfcPreview,
     VueRunSfcControl,
     VueRunSfcMain,
-    codemirror
+    MonacoEditor
   },
   props: {
     /**
@@ -95,7 +108,7 @@ export default {
      * @example: '<template><div>123</div></template>'
      */
     code: String,
-
+    token: String,
     /**
      * js 库
      * @example: ['https://unpkg.com/element-ui/lib/index.js']
@@ -143,6 +156,10 @@ export default {
     row: {
       type: Boolean,
       default: true
+    },
+    realtimecode: {
+      type: Boolean,
+      default: false
     },
 	codelanguage: {
       type: String,
@@ -202,17 +219,33 @@ export default {
   },
   data () {
     // https://codemirror.net/mode/
-    let cdop = codemirrorOption;
+
     // cdop.mode = "text/x-php";
     return {
+      editor:null,
       // 当hover时
       hovering: false,
       // 是否展开编辑器
       isExpanded: true,
       // 编辑器配置
-      codemirrorOption: cdop,
+      codemirrorOption: {
+          theme: "vs",
+          selectOnLineNumbers: true,
+          roundedSelection: false,
+          readOnly: false,
+          automaticLayout: true,
+          glyphMargin: true,
+          showFoldingControls: "always",
+          formatOnPaste: true,
+          formatOnType: true,
+          folding: true,
+          minimap:{
+           enabled:true
+           },
+      },
       // 当时是否为全屏
       isScreenfull: false,
+
       // 实际代码
       editCode: '',
       // 最初的代码(用于重置)
@@ -221,7 +254,7 @@ export default {
       preview: {
         iscommon: 1,
         language: this.codelanguage,
-        template: ''
+        template: ""
       },
       // 预览区高度
       previewHeight: this.preview_height,
@@ -297,8 +330,19 @@ export default {
         }
       }
     }
+
   },
+
   methods: {
+    onMounted(editor) {
+          this.editor = editor;
+          this.handleRun()
+    },
+    onCodeChange(editor){
+      if(this.realtimecode){
+        this.handleRun();
+      }
+    },
     // 全屏 (点击按钮)
     handleScreenfull () {
       this.isScreenfull = !this.isScreenfull
@@ -313,6 +357,7 @@ export default {
       }
     },
     getSource (source, type) {
+
       const regex = new RegExp(`<${type}[^>]*>`)
       let openingTag = source.match(regex)
       if (!openingTag) return ''
@@ -324,44 +369,48 @@ export default {
     },
     // 运行代码
     // 参考: https://github.com/QingWei-Li/vuep.run/blob/master/src/components/preview.vue
-    handleRun () {
+    // 1.点击运行 2.点击重置 3.编辑器首次初始化完成  4.编辑器内容发生改变 5.页面加载完成 init  并且代码折叠时候
+
+    handleRun (setcode="") {
+      this.editCode = setcode?setcode:this.editor.getValue();
       if (!this.runCode) {
         this.runCode = debounce(300, async () => {
-          const code = this.editCode
-          this.$emit('input', code)
-          this.$emit('change', code)
-          if (!code) {
+          this.$refs.preview.changeloading()
+          this.$emit('input', this.editCode)
+          this.$emit('change', this.editCode)
+          if (!this.editCode) {
             return
           }
           let htmls = ['html','css','javascript','vue'];
           if(htmls.indexOf(this.codelanguage)<0){
             this.preview = {
-              template: code,
+              template: this.editCode,
               iscommon: 1,
               language: this.codelanguage
             }
             return;
           }
           //前端
-          let str = this.getSource(code, 'script')
+          let str = this.getSource(this.editCode, 'script')
+
           // 含有关键字export default
           let regex = new RegExp(/export\s+default\s+{/)
           let res = str.match(regex)
           // 含有关键字export default
           let regex2 = new RegExp(`<template[^>]*>`)
-          let res2 = code.match(regex2)
+          let res2 = this.editCode.match(regex2)
           if (!res || !res2) {
             // 普通文档
-            console.log(1212)
+
             this.preview = {
-              template: code,
+              template: this.editCode,
               iscommon: 1,
               language: this.codelanguage
             }
             return
           }
           let { template, script, styles, errors } = compiler.parseComponent(
-            code
+            this.editCode
           )
 
           // 判断是否有错误
@@ -404,7 +453,7 @@ export default {
             // 转码
             try {
                let regex = new RegExp(/export\s+default\s+/)
-              script = this.getSource(this.code, "script").replace(
+              script = this.getSource(this.editCode, "script").replace(
                       regex,
                       "var _default = "
                     );
@@ -435,8 +484,9 @@ export default {
     },
     // 重置代码
     handleReset () {
-      this.editCode = this.initalCode
-      this.handleRun()
+       
+      this.editor.setValue(this.initalCode)
+      this.handleRun(this.initalCode)
     },
     // 设置默认 row的 值
     setDefaultRow () {
@@ -475,12 +525,15 @@ export default {
       initalCode = initalCode ? decodeURIComponent(initalCode) : ''
       this.initalCode = initalCode
       this.editCode = initalCode
+      if(!this.isExpanded){
+        this.handleRun(initalCode)
+      }
     }
   },
   mounted () {
     this.checkScreenfull()
     this.init()
-    this.handleRun()
+
   }
 }
 </script>

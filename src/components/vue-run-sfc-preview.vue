@@ -26,6 +26,7 @@ export default {
     VueElementLoading
   },
   props: {
+    token: String,
     jsLabs: {
       type: Array,
       default: () => []
@@ -57,23 +58,26 @@ export default {
   },
   mounted () {
     // this.initdoc()
-    console.log("mounted:")
+    // console.log("mounted:")
     this.setHTML()
   },
   data () {
     return {
       iframe: null,
       iframeDocument: null,
-      loading: true
+      loading: false
     }
   },
   watch: {
     value () {
-      console.log("value change:")
+      // console.log("value change:")
       this.setHTML()
     }
   },
   methods: {
+    changeloading(loading=true){
+      this.loading = loading;
+    },
     // 根据内容更改高度
     changeHeight () {
       if (!this.debounceChangeHeight) {
@@ -82,7 +86,7 @@ export default {
           const iframeDocument = this.iframeDocument
           iframe.style.display = 'block'
           const extendHeight = 10 // 额外的高度(避免出现滚动条)
-          console.log(iframeDocument.documentElement)
+
           const height =
             iframeDocument.documentElement.clientHeight + extendHeight
           iframe.style.height = height + 'px'
@@ -98,7 +102,7 @@ export default {
         let htmls = ['html','css','javascript','vue'];
         if(htmls.indexOf(this.value.language)>-1){
           var html = ''
-          console.log('this.value', this.value)
+          // console.log('this.value', this.value)
           let { styles = [], script = '', template, errors, iscommon,language } = this.value
           if (this.value.iscommon === 1) {
             html = `
@@ -169,14 +173,14 @@ export default {
           let data = new FormData();
           data.append('code',this.value.template);
           data.append('language',this.value.language);
-
+          data.append('_token',this.token);
           axios.post(this.codecompileurl,data)
                 .then((response) => {
-                  console.log(response)
+                  //console.log(response)
                    resolve('<pre>'+response.data.data+'</pre>')
                 })
                 .catch(function (error) { // 请求失败处理
-                  console.log(error);
+                  //console.log(error);
                 });
 
         }
@@ -205,17 +209,17 @@ export default {
     },
     // 设置html
     setHTML () {
-      console.log('setHTML')
+
       const iframe = this.$refs.iframe
       const iframeDocument = iframe.contentWindow.document
       let pro = this.createHtmltmp()
       pro.then((html)=>{
-        console.log('setHTML iframe pro then:')
+
         window.gethtml = `${html}`
         iframe.src = 'javascript:parent.gethtml;'
 
         iframe.onload = () => {
-          console.log('iframe onload:', iframeDocument.body.offsetHeight)
+          //console.log('iframe onload:')
           this.loading = false
           // this.iframe = iframe
           // this.iframeDocument = iframeDocument
@@ -235,6 +239,9 @@ export default {
           this.loading = false
         }
       })
+      setTimeout(()=>{
+         this.loading = false
+      },3500)
 
     }
   },

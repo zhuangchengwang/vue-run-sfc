@@ -1,12 +1,13 @@
 <template>
   <div>
-    <section class="main-content">
+    <section >
       <vue-run-sfc
         :js-labs="jsLabs"
         :css-labs="cssLabs"
         title="测试DEMO"
-        :open="true"
+        :open="false"
         :code="code"
+        :realtimecode="true"
         codelanguage="html"
         codecompileurl="http://wiki.xi13n.cn/runcode/run"
       />

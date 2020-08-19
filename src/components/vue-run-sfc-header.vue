@@ -8,7 +8,7 @@
     <div class="vue-run-sfc-header-title">{{ title }}</div>
     <!-- 操作区 -->
     <div class="vue-run-sfc-header-action" v-if="isExpanded">
-      <button class="vue-run-sfc-header-button" @click="alert('代码改变后(如增加一个空格),就会自动运行')">
+      <button class="vue-run-sfc-header-button" @click="$emit('runcode')">
         运行
       </button>
       <button class="vue-run-sfc-header-button" @click="$emit('reset')">
@@ -17,14 +17,14 @@
       <button class="vue-run-sfc-header-button" @click="$emit('change-row')">
         <span v-if="isRow">上下</span><span v-else>左右</span>布局
       </button>
-      <button
+     <!-- <button
         class="vue-run-sfc-header-button"
         v-if="canScreenfull"
         @click="$emit('screenfull')"
       >
         <template v-if="isScreenfull">退出全屏</template>
         <template v-else>全屏</template>
-      </button>
+      </button> -->
     </div>
   </div>
 </template>
