@@ -18,9 +18,10 @@
       @change-row="isRow = !isRow"
       @screenfull="handleScreenfull"
     />
+    <div v-if="isExpanded" class="alert alert-danger">当前是{{codelanguage}}模式,只能运行{{codelanguage}}代码,如需运行其他语言请到对应的教程页面</div>
     <!-- 中间主体区 -->
     <vue-run-sfc-main
-      :is-row="isRow"
+      :is-row="isRow &&!isMobile"
       :is-expanded="isExpanded"
       :reverse="attrs.reverse"
       :is-screenfull="isScreenfull"
@@ -262,7 +263,16 @@ export default {
       isRow: true
     }
   },
+  watch:{
+    isExpanded(val){
+      this.$emit('expandchange',val);
+    }
+  },
   computed: {
+    isMobile() {
+      let flag = navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i)
+      return flag;
+    },
     // 全局属性配置和自定义属性配置
     attrs () {
       const globalProps = this.$_vue_run_sfc || {}
@@ -339,9 +349,15 @@ export default {
           this.handleRun()
     },
     onCodeChange(editor){
-      if(this.realtimecode){
-        this.handleRun();
-      }
+		let htmls = ['html','css','javascript'];
+		if(htmls.indexOf(this.codelanguage)>-1){
+			this.handleRun();
+		}else{
+			if(this.realtimecode){
+			  this.handleRun();
+			}
+		}
+      
     },
     // 全屏 (点击按钮)
     handleScreenfull () {
@@ -373,6 +389,7 @@ export default {
 
     handleRun (setcode="") {
       this.editCode = setcode?setcode:this.editor.getValue();
+
       if (!this.runCode) {
         this.runCode = debounce(300, async () => {
           this.$refs.preview.changeloading()
@@ -484,7 +501,7 @@ export default {
     },
     // 重置代码
     handleReset () {
-       
+
       this.editor.setValue(this.initalCode)
       this.handleRun(this.initalCode)
     },
@@ -522,7 +539,7 @@ export default {
 
       // 默认code
       let initalCode = this.code || this.value
-      initalCode = initalCode ? decodeURIComponent(initalCode) : ''
+      initalCode = initalCode ? initalCode: ''
       this.initalCode = initalCode
       this.editCode = initalCode
       if(!this.isExpanded){
@@ -567,5 +584,14 @@ export default {
 }
 .vue-run-sfc-editor .CodeMirror-sizer {
   padding-right: 0 !important;
+}
+.alert-danger {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+}
+.alert {
+    padding: 5px;
+    border: 1px solid transparent;
 }
 </style>

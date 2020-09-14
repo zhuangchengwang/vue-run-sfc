@@ -7,11 +7,12 @@
     />
 
     <iframe
+    class="runcode_iframe"
       sandbox="allow-modals allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts"
       scrolling="yes"
       ref="iframe"
       frameborder="0"
-      style="width: 100%;height: 100%;border: none;"
+
     ></iframe>
   </div>
 </template>
@@ -19,6 +20,7 @@
 <script>
 // 参考: https://github.com/QingWei-Li/vuep.run/blob/master/src/components/preview.vue
 import VueElementLoading from 'vue-element-loading'
+import md5 from 'js-md5'
 const { debounce } = require('throttle-debounce')
 
 export default {
@@ -97,16 +99,95 @@ export default {
       }
       this.debounceChangeHeight()
     },
+    //本地存储set 支持过期时间
+    setStorageSyncExp(key, value, exp = 31536000000) {
+    	//exp 是毫秒,默认10年
+    	var timestamp = Date.parse(new Date());
+    	var data = {
+    		value: value,
+    		exp: exp + timestamp
+    	}
+      try{
+        localStorage.setItem(key,JSON.stringify(data));
+      }catch(e){
+        localStorage.clear();
+        localStorage.setItem(key,JSON.stringify(data));
+      }
+    },
+    //本地存储get 支持过期时间
+    getStorageSyncExp(key, isRemove = false) {
+    	try {
+    		var data = JSON.parse(localStorage.getItem(key));
+
+    		if (!data) {
+    			return null;
+    		} else {
+    			var timestamp = Date.parse(new Date());
+    			if (timestamp > data.exp) {
+    				localStorage.removeItem(key);
+    				return null;
+    			} else {
+    				if (isRemove) {
+    					localStorage.removeItem(key);
+    				}
+    				return data.value;
+    			}
+    		}
+    	} catch (e) {
+    		return null;
+    	}
+    },
+    getSource (source, type) {
+
+      const regex = new RegExp(`<${type}[^>]*>`)
+      let openingTag = source.match(regex)
+      if (!openingTag) return ''
+      else openingTag = openingTag[0]
+      return source.slice(
+        source.indexOf(openingTag) + openingTag.length,
+        source.lastIndexOf(`</${type}>`)
+      )
+    },
     createHtmltmp () {
       return new Promise((resolve,reject)=>{
-        let htmls = ['html','css','javascript','vue'];
+        let htmls = ['html','css','javascript'];
         if(htmls.indexOf(this.value.language)>-1){
           var html = ''
           // console.log('this.value', this.value)
           let { styles = [], script = '', template, errors, iscommon,language } = this.value
-          if (this.value.iscommon === 1) {
+          if(this.value.language == 'javascript'){
             html = `
-             ${template}`
+            <!DOCTYPE html>
+              <html>
+                <head>
+            </head>
+            <body id="body">
+            <div id='err'></div>
+            <script>
+            try{
+              ${template}
+            }catch(e){
+              document.getElementById('err').innerHTML='您的代码出错了,原因如下,请复制错误并百度:</br>'+e
+            }
+            <\/script>
+
+            </body>
+            </html>
+            `
+          } else if (this.value.iscommon === 1) {
+            html = `
+             ${template}
+             <script>
+                       function setParentIframeHeight(id){
+                            var parentIframe = parent.document.getElementById(id);
+                            var htmlheight = document.getElementsByTagName('html')[0].offsetHeight;
+                            if(htmlheight >parentIframe.height){
+                              parentIframe.height = htmlheight;
+                            }
+                       }
+                   var time =  window.setInterval("setParentIframeHeight('runcoderes')", 500);
+             <\/script>
+             `
           } else if (this.value.iscommon === 0) {
             var stylesTags = this.cssLabs.map(
               style => `<link rel="stylesheet" href="${style}" />`
@@ -123,15 +204,14 @@ export default {
                  <head>
                    ${stylesTags.join('\n')}
                    <style>${css.join('\n')}</style>
-
-                   <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
+                  <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'><\/script>
                    ${scriptTags.join('\n')}
                    <script>${js.join('\n')}<\/script>
                    <script>
                      // 错误处理
                      var errorHandler = function(error) {
                        var el = document.getElementById('error')
-                       el.innerHTML = '<pre style="color: red">' + error.stack +'</pre>'
+                       el.innerHTML = '<pre style="color: red">您的代码出错了,原因如下,请复制错误并百度</br>' + error.stack +'</pre>'
                      }
                      Vue.config.warnHandler = function(msg) { errorHandler(new Error(msg)) }
                      Vue.config.errorHandler = errorHandler
@@ -148,6 +228,16 @@ export default {
                       <script>
                       ${script2}
                       <\/script>
+                      <script>
+                       function setParentIframeHeight(id){
+                                     var parentIframe = parent.document.getElementById(id);
+                                     var htmlheight = document.getElementsByTagName('html')[0].offsetHeight;
+                                      if(htmlheight >parentIframe.height){
+                                        parentIframe.height = htmlheight;
+                                      }
+                                }
+                          window.setInterval("setParentIframeHeight('runcoderes')", 500);
+                      <\/script>
                    </div>
                  </body>
              </html>`
@@ -157,19 +247,26 @@ export default {
           //ajax 请求
           // console.log(this.value);
           if(!this.value.template){
-           resolve("代码改变,就可以在此实时预览效果~~~")
+           resolve("编辑代码,点击运行 => 预览效果~~~")
            return;
           }
+          let skey = md5('jijii'+this.value.template)
+          let res2 = this.getStorageSyncExp(skey);
+          if(res2){
 
+            resolve(res2)
+            return
+          }
           let url = this.codecompileurl;
           let axios = window.axios.create({
-          timeout: 5000, // request timeout  设置请求超时时间
-          responseType: "json",
-          // withCredentials: true, // 是否允许带cookie这些
-          headers: {
-            "Content-Type": "application/json;charset=utf-8"
-          }
-      });
+              timeout: 5000, // request timeout  设置请求超时时间
+              responseType: "json",
+              // withCredentials: true, // 是否允许带cookie这些
+              headers: {
+                "Content-Type": "application/json;charset=utf-8"
+              }
+          });
+
           let data = new FormData();
           data.append('code',this.value.template);
           data.append('language',this.value.language);
@@ -177,7 +274,13 @@ export default {
           axios.post(this.codecompileurl,data)
                 .then((response) => {
                   //console.log(response)
-                   resolve('<pre>'+response.data.data+'</pre>')
+                  let res = '<pre>'+response.data.data+'</pre>';
+                  try{
+                    this.setStorageSyncExp(skey, res,24*3600*70000)
+                  }catch(e){
+                    localStorage.clear();
+                  }
+                   resolve(res)
                 })
                 .catch(function (error) { // 请求失败处理
                   //console.log(error);
@@ -217,7 +320,7 @@ export default {
 
         window.gethtml = `${html}`
         iframe.src = 'javascript:parent.gethtml;'
-
+        iframe.id = 'runcoderes'
         iframe.onload = () => {
           //console.log('iframe onload:')
           this.loading = false
@@ -236,7 +339,8 @@ export default {
         }
 
         iframe.error = () => {
-          this.loading = false
+          this.loading = false;
+
         }
       })
       setTimeout(()=>{
@@ -263,5 +367,12 @@ export default {
   background: white;
   padding: 20px 15px;
   height: 100%;
+}
+.runcode_iframe{
+  width: 100%;border: none;
+}
+.runcode_iframe{
+  min-height:15vh !important;
+  max-height: 100vh !important;
 }
 </style>

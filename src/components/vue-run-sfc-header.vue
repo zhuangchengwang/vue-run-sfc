@@ -5,9 +5,9 @@
     :class="{ 'vue-run-sfc-header-screenfull': isScreenfull }"
   >
     <!-- 标题 -->
-    <div class="vue-run-sfc-header-title">{{ title }}</div>
+    <div class="vue-run-sfc-header-title" v-html="title"></div>
     <!-- 操作区 -->
-    <div class="vue-run-sfc-header-action" v-if="isExpanded">
+    <div class="vue-run-sfc-header-action" v-if="isExpanded && !isMobile">
       <button class="vue-run-sfc-header-button" @click="$emit('runcode')">
         运行
       </button>
@@ -39,6 +39,12 @@ export default {
     isExpanded: Boolean,
     isRow: Boolean,
     isScreenfull: Boolean
+  },
+  computed:{
+    isMobile() {
+      let flag = navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i)
+      return flag;
+    },
   },
   data () {
     return {

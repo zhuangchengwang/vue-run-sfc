@@ -7,9 +7,10 @@
         title="测试DEMO"
         :open="false"
         :code="code"
-        :realtimecode="true"
+
         codelanguage="html"
         codecompileurl="http://wiki.xi13n.cn/runcode/run"
+        @expandchange="expandChange"
       />
       <!-- <h2>DEMO 源码</h2>
       <codemirror
@@ -30,6 +31,11 @@ export default {
   components: {
     codemirror
   },
+  methods:{
+    expandChange(val){
+      console.log(val);
+    }
+  },
   data () {
     return {
       exampleCode: exampleCode,
@@ -38,35 +44,7 @@ export default {
       cssLabs: [
         'https://cdn.jsdelivr.net/npm/element-ui@2.12.0/lib/theme-chalk/index.css'
       ],
-      code: `<template>
-  <div>
-    <h1>{{title}}</h1>
-    <div><el-button type="primary" @click="handleClick">点一下, 玩一年</el-button></div>
-  </div>
-</template>
-
-<script>
-  export default {
-    data() {
-      return {
-        title: "宝刀屠龙"
-      };
-    },
-    methods: {
-      handleClick () {
-        this.$message.success('装备不花一分钱')
-      }
-    }
-  };
-<\/script>
-
-<style lang="scss">
-  body {
-    #box {
-      color: #409EFF;
-    }
-  }
-</style>`
+      code: `<p>感谢使用~~<p>`
     }
   }
 }
